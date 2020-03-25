@@ -34,7 +34,6 @@ namespace Math {
 
     inline float DistanceFOV(const QAngle &viewAngle, const QAngle &aimAngle, const float distance) {
         float angleFOV = AngleFOV(viewAngle, aimAngle);
-
         angleFOV /= 90.0f;
 
         float distanceFOV = angleFOV * distance;

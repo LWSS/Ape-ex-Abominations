@@ -97,6 +97,7 @@ static void *MainThread(void *) {
     Threading::InitThreads();
 
     try {
+        Logger::Log("doing shit\n");
         MTR_BEGIN("Initialization", "InitCTX");
         WinContext ctx(pid);
         MTR_END("Initialization", "InitCTX");
@@ -136,7 +137,7 @@ static void *MainThread(void *) {
         MTR_BEGIN("Initialization", "FindOffsets");
         Threading::QueueJobRef(Interfaces::FindInterfaces, MODNAME);
         Threading::QueueJobRef(Netvars::CacheNetvars, MODNAME);
-        Netvars::PrintNetvars(*process, MODNAME);
+        //Netvars::PrintNetvars(*process, MODNAME);
 
         for (const Signature &sig : signatures)
             Threading::QueueJobRef(ThreadSignature, &sig);
@@ -151,6 +152,7 @@ static void *MainThread(void *) {
 
         // Print some sig stuff - useful for reclass analysis etc
         Logger::Log("Localplayer: %p\n", (void *) GetLocalPlayer());
+        Logger::Log("LocalplayerPtr: %p\n", (void *) localPlayerPtr);
         Logger::Log("(Linux)Localplayer: %p\n", (void *) &localPlayer);
         Logger::Log("Entlist: %p\n", (void *) entList);
         Logger::Log("GlobalVars: %p\n", (void *) globalVarsAddr);
@@ -170,7 +172,7 @@ static void *MainThread(void *) {
         // these buffers wont get re-allocated, getting the address of em' here is fine.
         userCmdArr = process->Read<uintptr_t>(inputAddr + OFFSET_OF(&CInput::m_commands));
         verifiedUserCmdArr = process->Read<uintptr_t>(inputAddr + OFFSET_OF(&CInput::m_verifiedCommands));
-
+        //goto quit;
         while (running) {
             globalVars = process->Read<CGlobalVars>(globalVarsAddr);
 
@@ -180,25 +182,27 @@ static void *MainThread(void *) {
 
             /* Per Tick Operations */
             updateWrites = (globalVars.tickCount != lastTick || globalVars.framecount != lastFrame);
-
             // reset fakelag if we arent ingame
-            if (clientState.m_signonState != SIGNONSTATE_INGAMEAPEX)
-                process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
+            /*if (clientState.m_signonState != SIGNONSTATE_INGAMEAPEX)
+                process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);*/
 
             if (updateWrites) {
                 /* -=-=-=-=-=-=-=-=-= Tick Operations -=-=-=-=-=-=-=-=-=-=-= */
                 MTR_SCOPED_TRACE("MainLoop", "Tick");
 
-                int entityCount = process->Read<int>(apexBase + 0xC016EA0);
+                int entityCount = process->Read<int>(apexBase + 0x1adac1c); // TODO: fix and sig
 
-                if (!entityCount || entityCount > 50000)
-                    continue;
+                if (!entityCount || entityCount > 50000) {
+                    entityCount = 100; // hardcoded to 100 as item esp is disabled
+                }
+                InputSystem::InputSystem();
 
                 validEntities.clear();
 
                 for (int ent = 0; ent < entityCount; ent++) {
                     uintptr_t entity = GetEntityById(ent);
                     if (!entity) continue;
+
                     bool isPlayer = IsPlayer(entity);
 
                     if (!isPlayer) {
@@ -250,14 +254,13 @@ static void *MainThread(void *) {
                 writeList.Commit();
 
                 lastTick = globalVars.tickCount;
-            } else {
-                std::this_thread::sleep_for(std::chrono::microseconds(1000));
             }
+            std::this_thread::sleep_for(std::chrono::microseconds(2000));
         }
 
         // reset these values to properly reset after exiting the cheat
-        process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
-        process->Write<float>(timescale, 1.0f); // reset speedhack // reset speedhack
+        //process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
+        //process->Write<float>(timescale, 1.0f); // reset speedhack // reset speedhack
 
         Logger::Log("Main Loop Ended.\n");
     } catch (VMException &e) {
@@ -281,7 +284,7 @@ static void *MainThread(void *) {
 }
 
 static void __attribute__((constructor)) Startup() {
-    inputSystemThread = Threading::StartThread(InputSystem::InputSystem, nullptr, false);
+    //inputSystemThread = Threading::StartThread(InputSystem::InputSystem, nullptr, false);
     mainThread = Threading::StartThread(MainThread, nullptr, false);
 }
 
@@ -290,7 +293,7 @@ static void __attribute__((destructor)) Shutdown() {
 
     running = false;
 
-    Threading::JoinThread(inputSystemThread, nullptr);
+    //Threading::JoinThread(inputSystemThread, nullptr);
     Threading::JoinThread(mainThread, nullptr);
 
     Logger::Log("Done\n");

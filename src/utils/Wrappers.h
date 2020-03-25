@@ -54,13 +54,8 @@ inline uintptr_t GetActiveWeapon(CBaseEntity &entity) {
     return GetEntityById(weapon);
 }
 
-inline uintptr_t GetLocalPlayer() {
-    uintptr_t localPlayerPtr = process->Read<uintptr_t>(apexBase + 0x22E3078);
-    return localPlayerPtr;
-}
-
 inline uintptr_t GetLocalPlayerById() {
-    localPlayerId = process->Read<int>(apexBase + 0x172EA34);
+    localPlayerId = process->Read<int>(apexBase + 0x1060b44); // TODO: sig this
 
     for (int ent = 1; ent < 100; ent++) {
         uintptr_t entity = GetEntityById(ent);
@@ -74,6 +69,13 @@ inline uintptr_t GetLocalPlayerById() {
     }
     return 0;
 }
+
+inline uintptr_t GetLocalPlayer() {
+    //uintptr_t localPlayerPtr = process->Read<uintptr_t>(apexBase + 0x22E3078);
+    //return localPlayerPtr;
+    return GetLocalPlayerById();
+}
+
 
 inline bool IsPlayer(uintptr_t entity) {
     char buffer[20];

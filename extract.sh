@@ -13,7 +13,8 @@ if grep -q "$filename" /proc/"$qemu_pid"/maps; then
     -ex "set \$dlclose = (int(*)(void*)) dlclose" \
     -ex "set \$library = \$dlopen(\"$filename\", 6)" \
     -ex "call \$dlclose(\$library)" \
-	-ex "call \$dlclose(\$library)" \
+    -ex "call \$dlclose(\$library)" \
+    -ex "detach"
     -ex "quit"
 else
 	echo "Ape-ex is not injected!"

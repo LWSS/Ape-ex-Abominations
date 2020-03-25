@@ -8,32 +8,34 @@
 
 #define CBASE_ENTITY_OFFSETS(HANDLER)           \
     HANDLER(int, 0x8, index)                    \
-    HANDLER(Vector, 0x130, absvelocity)         \
-    HANDLER(Vector, 0x41C, velocity)            \
-    HANDLER(Vector, 0x144, origin)              \
-    HANDLER(Vector, 0x1c8, glowCol)             \
-    HANDLER(float, 0x2c8, glowTimes1)           \
-    HANDLER(float, 0x2cc, glowTimes2)           \
-    HANDLER(float, 0x2d0, glowTimes3)           \
-    HANDLER(float, 0x2d4, glowTimes4)           \
-    HANDLER(float, 0x2d8, glowTimes5)           \
-    HANDLER(float, 0x2dc, glowTimes6)           \
+    HANDLER(Vector, 0x140, velocity)            \
+    HANDLER(Vector, 0x140, absVelocity)         \
+    HANDLER(Vector, 0x14C, origin)              \
+    HANDLER(Vector, 0x14C, absOrigin)           \
+    HANDLER(int, 0x310, iGlowEnable)            \
+    HANDLER(bool, 0x380, bGlowEnable)           \
+    HANDLER(float, 0x2FC, glowFarFadeDist)      \
+    HANDLER(Vector, 0x1D0, glowCol)             \
     HANDLER(float, 0x2e0, glowDistance)         \
-    HANDLER(float, 0x2F4, glowHighlight)        \
-    HANDLER(unsigned int, 0x270, glowOutline)   \
-    HANDLER(int, 0x308, iGlowEnable)            \
-    HANDLER(bool, 0x388, bGlowEnable)           \
+    HANDLER(float, 0x2D0, glowInside1)          \
+    HANDLER(float, 0x2D8, glowInside2)          \
+    HANDLER(float, 0x2E0, glowInside3)          \
+    HANDLER(float, 0x2D4, glowOutline1)         \
+    HANDLER(float, 0x2DC, glowOutline2)         \
+    HANDLER(float, 0x2E4, glowOutline3)         \
+    HANDLER(float, 0x2E8, glowLifetime)         \
     HANDLER(int, 0x3F0, teamNum)                \
     HANDLER(int, 0x1308, id)                    \
     HANDLER(Vector, 0x414, localAngles)         \
     HANDLER(uintptr_t, 0xEE0, boneMatrix)       \
-    HANDLER(uintptr_t, 0x1704, activeWeapon)    \
-    HANDLER(QAngle, 0x20B4 , aimPunch)          \
-    HANDLER(QAngle, 0x2140, swayAngles)         \
-    HANDLER(QAngle, 0x2150, viewAngles)         \
-    /*HANDLER(int, 0x2368, lifeState)*/         \
+    HANDLER(uintptr_t, 0x1944, activeWeapon)    \
+    HANDLER(QAngle, 0x2308 , aimPunch)          \
+    HANDLER(QAngle, 0x23C0, swayAngles)         \
+    HANDLER(QAngle, 0x23D0, viewAngles)         \
     HANDLER(int, 0x3E0, health)                 \
-    HANDLER(Vector, 0x1B64, eyePos)             \
+    HANDLER(Vector, 0x1DA8, eyePos)             \
+
+
     //HANDLER(Vector, 0x1C04, eyePos)             \ OLD
     /*HANDLER(Vector, 0x4264, eyePos)             \*/
 

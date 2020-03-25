@@ -6,43 +6,102 @@
 #include "../utils/Wrappers.h"
 #include "../utils/minitrace.h"
 
-/*QAngle Aimbot::RecoilCompensation() {
-    QAngle dynamic = localPlayer.aimPunch;
 
-    return dynamic;
-}*/
+#define SMOOTH_TYPE 0
+#define SMOOTH_TYPE_FAST 0
+
+#define val 0.5f
 
 static void RecoilCompensation(const QAngle &viewAngle, QAngle &angle) {
     QAngle recoil = localPlayer.aimPunch;
 
     angle -= recoil;
 }
+
+float randFloat(float min, float max) {
+
+    return min + static_cast <float> (rand()) / (static_cast <float> (RAND_MAX / (max - min)));
+}
+
+static void ApplyErrorToPoint(Vector *point, float margin = 5.0f) { // applying error to angle causes issues on long range
+    Vector error;
+    error->x = randFloat(-1, 1);
+    error->y = randFloat(-1, 1);
+    //error->z = randFloat(-1, 1);
+    error *= margin;
+
+    *point += error;
+}
+
 static void SwayCompensation(const QAngle &viewAngle, QAngle &angle) {
     QAngle dynamic = localPlayer.swayAngles;
     QAngle sway = dynamic - viewAngle;
+    sway.Normalize();
 
     angle -= sway;
 }
 
-static void SpreadCompensation(uintptr_t weapon) {
-    process->Write<float>(weapon + 0x13b0, -1.0f);
-    process->Write<float>(weapon + 0x13c0, -1.0f);
+static void SpreadCompensation(uintptr_t weapon) { // needs fix
+    process->Write<float>(weapon + 0x141c, -1.0f);
+    process->Write<float>(weapon + 0x1420, -1.0f);
 }
 
-void Smooth(QAngle &angle, QAngle &viewAngle, float val = 0.2f) { // Unused; needs update
-    return;
+void Smooth(QAngle &angle, QAngle &viewAngle) {
+    float smooth = std::min(0.99f, val);
+
     QAngle delta = angle - viewAngle;
+    delta.Normalize();
     Math::Clamp(delta);
 
     if (delta.Length() < 0.1f)
         return;
 
-    QAngle change;
 
-    val = std::min(0.99f, val);
-    change = delta.v * (1.0f - val);
+    if (SMOOTH_TYPE == SMOOTH_TYPE_FAST) {
+        float coefficient = (1.0f - smooth) / delta.Length() * 4.0f;
+        coefficient = powf(coefficient, 2.0f) * 10.0f;
+        coefficient = std::max(0.05f, coefficient);
+        coefficient = std::min(1.0f, coefficient);
 
-    angle = viewAngle + change;
+        delta.v = delta.v * coefficient;
+    } else {
+        delta.v = delta.v * (1.0f - smooth);
+        if (delta.Length() < 2.0f) {
+            delta.v = delta.v + (delta.v * delta.Length());
+        }
+    }
+
+    delta.Normalize();
+    angle = viewAngle + delta;
+}
+
+void VelocityPrediction(CBaseEntity *entity, uintptr_t weapon, float distance, float bulletVelocity, Vector &result) {
+    // divided into two parts: charge rifle (no bullet drop) and other weapons (not done yet)
+    Vector enemyVelocity = entity->velocity;
+
+    float projectileGravityScale = process->Read<float>(weapon + 0x1D34);
+
+    float time = distance / bulletVelocity;
+    if (time == INFINITY || time == NAN) {
+        time = 0;
+    }
+
+    //Logger::Log("time: %f\n", time);
+    if (time < globalVars.intervalPerTick) {
+        //Logger::Log("setting to 0: %f\n", globalVars.intervalPerTick);
+        time = 0.0f;
+    }
+
+    result->x += time * enemyVelocity->x;
+    result->y += time * enemyVelocity->y;
+
+    // v25 = (((*(weapon + 0x1C98) * *(gravity + 0x1A)) * 0.5) * (*(weapon + 0x1B2C) / *(weapon + 0x1C90))) / *(weapon + 0x1C90)
+    //result->z += (enemyVelocity->z * time) + ((projectileGravityScale * 750.0f * 0.5 * powf(time, 2.0f)) / bulletVel); // Game prediction
+
+    result->z += ((enemyVelocity->z * time) + ((projectileGravityScale * 750.0f) * 0.5 * powf(time, 2.0f)));
+    result->z -= 1.0f;
+
+    ApplyErrorToPoint(&result); // maybe apply error on relative head position?
 }
 
 void Aimbot::Aimbot() {
@@ -50,17 +109,26 @@ void Aimbot::Aimbot() {
     MTR_SCOPED_TRACE("Aimbot", "Run");
 
     static int lastEntity = -1;
+    static int lastEntityIndex = -1;
     static uintptr_t plastEntity = 0;
     if (!localPlayer)
         return;
 
+    static int iterations = 0;
+
     if (!pressedKeys[KEY_LEFTALT] && clientState.m_signonState == SIGNONSTATE_INGAMEAPEX) {
+
         // if we cannot run aimbot and we arent speedhacking reset fakelag
         //if (!(pressedKeys & KEY_ALT))
-        process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
-        aimbotEntity = 0;
-        lastEntity = -1;
-        return;
+        //process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
+        iterations++;
+        if (iterations > 5) {
+            aimbotEntity = 0;
+            lastEntity = -1;
+            return;
+        }
+    } else if (pressedKeys[KEY_LEFTALT]) {
+        iterations = 0;
     }
 
     QAngle localAngles = localPlayer.viewAngles;
@@ -68,7 +136,7 @@ void Aimbot::Aimbot() {
 
     uintptr_t weapon = GetActiveWeapon(localPlayer);
 
-    float bulletVel = process->Read<float>(weapon + 0x1C90);
+    float bulletVel = process->Read<float>(weapon + 0x1D2C);
     if (bulletVel == 1.0f) { // 1.0f is fists.
         //Logger::Log("Not aimbotting on fists\n");
         return;
@@ -116,11 +184,18 @@ void Aimbot::Aimbot() {
         Vector headpos = GetBonePos(entity, 12, entity.origin);
         float dist = localEye.DistTo(headpos);
         float distFactor = Math::DistanceFOV(localAngles, QAngle(headpos - localEye), dist);
+        float angleFov = Math::AngleFOV(localAngles, QAngle(headpos - localEye));
+
+        if (angleFov > 45.0f) {
+            continue;
+        }
+
         //float distFactor = Math::AngleFOV(localAngles, QAngle(headpos - localEye));
         if (distFactor < closest && (lastEntity == -1 || entID == lastEntity)) {
             closest = distFactor;
             closestEnt = &entity;
             plastEntity = closestEnt->GetBaseClass().address;
+            lastEntityIndex = closestEnt->index;
             closestDist = dist;
             closestHeadPos = headpos;
             closestID = entID;
@@ -140,20 +215,7 @@ void Aimbot::Aimbot() {
 
     aimbotEntity = closestEnt->GetBaseClass().address;
 
-    Vector enemyVelocity = closestEnt->velocity;
-    Vector finalVelocity = enemyVelocity;
-    Vector finalHeadPos = closestHeadPos;
-
-    float projectileGravityScale = process->Read<float>(weapon + 0x1C98);
-
-    float time = closestDist / bulletVel;
-
-    finalHeadPos->x += time * finalVelocity->x;
-
-    finalHeadPos->y += time * finalVelocity->y;
-
-    finalHeadPos->z += (enemyVelocity->z * time) + ((projectileGravityScale * 750.0f * 0.5 * powf(time, 2.0f)) / bulletVel); // Game prediction
-    finalHeadPos->z -= 1.0f;
+    VelocityPrediction(closestEnt, weapon, closestDist, bulletVel, closestHeadPos);
 
     for (size_t entID = 0; entID < validEntities.size(); entID++) {
         CBaseEntity &entity = entities[validEntities[entID]];
@@ -209,21 +271,23 @@ void Aimbot::Aimbot() {
     }
 
 #else
-    QAngle aimAngle(finalHeadPos - localEye);
+    QAngle aimAngle(closestHeadPos - localEye);
 
     if ((aimAngle->x == 0 && aimAngle->y == 0 && aimAngle->z == 0) || !aimAngle.IsValid()) {
         return;
     }
 
     //SpreadCompensation(weapon); // $wag
-    SwayCompensation(localPlayer.viewAngles, aimAngle);
+
+    SwayCompensation(localAngles, aimAngle);
+    Smooth(aimAngle,
+           localAngles); // seems like they introduced a server-side fair-fight like anti-cheat with season4 which bans u for not being nice, so lets at least be a bit human
 
     aimAngle.Normalize();
     Math::Clamp(aimAngle);
-    Smooth(aimAngle, localAngles);
     localPlayer.viewAngles = aimAngle;
 
-    process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
+    //process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
 
 #endif
 

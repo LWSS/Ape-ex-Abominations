@@ -14,7 +14,7 @@
 #include "../globals.h"
 
 namespace InputSystem {
-    extern void *InputSystem(void *);
+    extern void InputSystem();
 }
 
 

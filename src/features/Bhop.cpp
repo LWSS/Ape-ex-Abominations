@@ -13,7 +13,24 @@ void Bhop::Bhop(CBaseEntity &localplayer) {
 }
 
 void Bhop::Strafe() {
-    return; // TODO: Reverse InputAddr sig
+    return;
+
+    if (netChan.m_chokedCommands < 2) {
+        process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), std::numeric_limits<double>::max());
+    } else {
+        int32_t commandNr = process->Read<int32_t>(clientStateAddr + OFFSET_OF(&CClientState::m_lastUsedCommandNr));
+        int32_t targetCommand = (commandNr - 2) % 300;
+
+        // manipulate usercmd
+        CUserCmd cmd = process->Read<CUserCmd>(userCmdArr + targetCommand * sizeof(CUserCmd));
+        cmd.m_sidemove = 250.0f;
+
+        // write usercmd
+        process->Write<CUserCmd>(userCmdArr + targetCommand * sizeof(CUserCmd), cmd);
+        process->Write<CUserCmd>(verifiedUserCmdArr + targetCommand * sizeof(CVerifiedUserCmd), cmd);
+        process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), 0.0);
+
+    }
 
     if (netChan.m_chokedCommands < 2) {
         process->Write<double>(clientStateAddr + OFFSET_OF(&CClientState::m_nextCmdTime), std::numeric_limits<double>::max());

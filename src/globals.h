@@ -24,6 +24,7 @@ inline uintptr_t inputAddr;
 inline uintptr_t timescale;
 inline uintptr_t forceJump;
 inline int localPlayerId;
+inline uintptr_t localPlayerPtr;
 
 inline uintptr_t userCmdArr;
 inline uintptr_t verifiedUserCmdArr;

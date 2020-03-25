@@ -53,13 +53,17 @@ static void WriteItemGlow(CBaseEntity &entity, Vector &colors) {
     process->Write<bool>(entity.bGlowEnable.GetAddress(), true);
 
     process->Write<float>(entity.glowDistance.GetAddress(), __FLT_MAX__);
+    process->Write<float>(entity.glowFarFadeDist.GetAddress(), __FLT_MAX__);
+    process->Write<float>(entity.glowLifetime.GetAddress(), __FLT_MAX__);
 
-    process->Write<float>(entity.glowHighlight.GetAddress(), __FLT_MAX__);
+    process->Write<float>(entity.glowOutline1.GetAddress(), __FLT_MAX__);
+    process->Write<float>(entity.glowOutline2.GetAddress(), __FLT_MAX__);
+    process->Write<float>(entity.glowOutline3.GetAddress(), __FLT_MAX__);
 
     process->Write<Vector>(entity.glowCol.GetAddress(), colors);
 
 
-    process->Write<int>(entity.glowOutline.GetAddress(), 0x4D407D7E);
+    //process->Write<int>(entity.glowOutline.GetAddress(), 0x4D407D7E);
 }
 
 static void WriteGlow(CBaseEntity &entity, Vector &colors, float distance) {
@@ -68,16 +72,16 @@ static void WriteGlow(CBaseEntity &entity, Vector &colors, float distance) {
 
     entity.glowCol = colors;
 
-    entity.glowTimes1 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
-    entity.glowTimes2 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
-    entity.glowTimes3 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
-    entity.glowTimes4 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
-    entity.glowTimes5 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
-    entity.glowTimes6 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
+    entity.glowInside1 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
+    entity.glowInside2 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
+    entity.glowInside3 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
+    entity.glowOutline1 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
+    entity.glowOutline2 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
+    entity.glowOutline3 = __FLT_MAX__; // Setting the time of the Glow to be the Max Float value so it never runs out
 
-    entity.glowHighlight = __FLT_MAX__;
+    entity.glowFarFadeDist = __FLT_MAX__;
     entity.glowDistance = __FLT_MAX__; //Set the Distance of the Glow to Max float value so we can see a long Distance
-    entity.glowOutline = 0x4D407D7E; // outline effect
+    entity.glowLifetime = __FLT_MAX__;
 }
 
 void Glow::Glow() {
@@ -112,8 +116,8 @@ void Glow::Glow() {
             WriteGlow(entity, color, 0.0f);
         } else {
             Vector color = Vector(1, 1, 1);
-
-            WriteItemGlow(entity, color);
+            /* lol fuck this shit not gonna deal with race conditions anymore */
+            //WriteItemGlow(entity, color);
             continue;
         }
     }
