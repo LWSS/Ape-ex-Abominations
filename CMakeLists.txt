@@ -52,6 +52,7 @@ file(GLOB_RECURSE SOURCE_FILES_C "${CMAKE_SOURCE_DIR}/modules/*.c")
 
 list(REMOVE_ITEM SOURCE_FILES_C "${CMAKE_SOURCE_DIR}/modules/vmread/example.c")
 list(REMOVE_ITEM SOURCE_FILES_C "${CMAKE_SOURCE_DIR}/modules/vmread/vmmem.c")
+list(REMOVE_ITEM SOURCE_FILES_C "${CMAKE_SOURCE_DIR}/modules/vmread/kmem.c")
 list(REMOVE_ITEM SOURCE_FILES_C "${CMAKE_SOURCE_DIR}/modules/vmread/intmem.c")
 list(REMOVE_ITEM SOURCE_FILES_CXX "${CMAKE_SOURCE_DIR}/modules/vmread/example.cpp")
 
